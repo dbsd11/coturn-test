@@ -1,27 +1,19 @@
-// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
-// SPDX-License-Identifier: MIT
-
-// pion-to-pion is an example of two pion instances communicating directly!
 package main
 
 import (
-        "bytes"
         "encoding/json"
         "flag"
         "fmt"
         "io"
-        "io/ioutil"
         "net/http"
         "os"
         "sync"
         "time"
 
         "github.com/pion/webrtc/v4"
-        "github.com/pion/webrtc/v4/examples/internal/signal"
 )
 
 func main() { // nolint:gocognit
-        answerAddr := flag.String("answer-address", ":60000", "Address that the Answer HTTP server is hosted on.")
         flag.Parse()
 
         var candidatesMux sync.Mutex
@@ -97,9 +89,7 @@ func main() { // nolint:gocognit
 
                 peerConnection.SetLocalDescription(answer)
 
-                time.Sleep(2 * time.Second)
-
-                answer, err = peerConnection.CreateAnswer(nil)
+                time.Sleep(10 * time.Second)
 
                 result := make(map[string]interface{})
 
@@ -114,14 +104,6 @@ func main() { // nolint:gocognit
                 // 返回给浏览器
                 io.WriteString(w, string(resDatas))
 
-                candidatesMux.Lock()
-                for _, c := range pendingCandidates {
-                        onICECandidateErr := signalCandidate(*offerAddr, c)
-                        if onICECandidateErr != nil {
-                                //panic(onICECandidateErr)
-                        }
-                }
-                candidatesMux.Unlock()
         })
 
         // Set the handler for Peer connection state
@@ -153,7 +135,7 @@ func main() { // nolint:gocognit
                         fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", d.Label(), d.ID())
 
                         for range time.NewTicker(5 * time.Second).C {
-                                message := signal.RandSeq(15)
+                                message := "from answer server"
                                 fmt.Printf("Sending '%s'\n", message)
 
                                 // Send the message as text
@@ -172,5 +154,5 @@ func main() { // nolint:gocognit
 
         // Start HTTP server that accepts requests from the offer process to exchange SDP and Candidates
         // nolint: gosec
-        panic(http.ListenAndServe(*answerAddr, nil))
+        panic(http.ListenAndServe(":60000", nil))
 }
