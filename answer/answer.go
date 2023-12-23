@@ -97,7 +97,7 @@ func main() { // nolint:gocognit
 
                 peerConnection.SetLocalDescription(answer)
 
-                time.Sleep(1 * time.Second)
+                time.Sleep(2 * time.Second)
 
                 answer, err = peerConnection.CreateAnswer(nil)
 
