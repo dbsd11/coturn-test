@@ -1,7 +1,9 @@
 FROM golang:1.21
 
-COPY ./answer /answer
+COPY ./answer.go /answer.go
 
-CMD ["/answer"]
+RUN cd / && go mod init main && go get .
+
+ENTRYPOINT ["go", "run", "/answer.go"]
 
 EXPOSE 60000
