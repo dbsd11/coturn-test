@@ -1,7 +1,9 @@
 FROM golang:1.21
 
-copy ./offer /offer
+COPY ./offer.go /offer.go
 
-CMD ["/offer"]
+RUN cd / && go mod init main && go get .
+
+ENTRYPOINT ["go", "run", "/offer.go"]
 
 EXPOSE 50000
