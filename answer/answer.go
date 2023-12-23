@@ -20,6 +20,11 @@ func main() { // nolint:gocognit
         pendingCandidates := make([]*webrtc.ICECandidate, 0)
         // Everything below is the Pion WebRTC API! Thanks for using it ❤️.
 
+        s := webrtc.SettingEngine{}
+        s.SetSrflxAcceptanceMinWait(time.Duration(1)*time.Minute)
+        api := webrtc.NewAPI(webrtc.WithSettingEngine(s))
+
+
         // Prepare the configuration
         config := webrtc.Configuration{
                 ICEServers: []webrtc.ICEServer{
@@ -33,13 +38,13 @@ func main() { // nolint:gocognit
                                 CredentialType: webrtc.ICECredentialTypePassword,
                         },
                 },
-                ICETransportPolicy: webrtc.ICETransportPolicyRelay,
+                ICETransportPolicy: webrtc.ICETransportPolicyAll,
                 BundlePolicy:       webrtc.BundlePolicyBalanced,
                 RTCPMuxPolicy:      webrtc.RTCPMuxPolicyRequire,
         }
 
         // Create a new RTCPeerConnection
-        peerConnection, err := webrtc.NewPeerConnection(config)
+        peerConnection, err := api.NewPeerConnection(config)
         if err != nil {
                 panic(err)
         }
