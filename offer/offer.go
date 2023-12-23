@@ -5,14 +5,12 @@ import (
         "encoding/json"
         "flag"
         "fmt"
-        "io/ioutil"
         "net/http"
         "os"
         "sync"
         "time"
 
         "github.com/pion/webrtc/v4"
-        "github.com/pion/webrtc/v4/examples/internal/signal"
 )
 
 type AnswerResut struct {
@@ -73,7 +71,7 @@ func main() { //nolint:gocognit
 
         // Start HTTP server that accepts requests from the answer process
         // nolint: gosec
-        go func() { panic(http.ListenAndServe(50000, nil)) }()
+        go func() { panic(http.ListenAndServe(":50000", nil)) }()
 
         // Create a datachannel with label 'data'
         dataChannel, err := peerConnection.CreateDataChannel("data", nil)
@@ -106,7 +104,7 @@ func main() { //nolint:gocognit
                 fmt.Printf("Data channel '%s'-'%d' open. Random messages will now be sent to any connected DataChannels every 5 seconds\n", dataChannel.Label(), dataChannel.ID())
 
                 for range time.NewTicker(5 * time.Second).C {
-                        message := signal.RandSeq(15)
+                        message := "from offer"
                         fmt.Printf("Sending '%s'\n", message)
 
                         // Send the message as text
