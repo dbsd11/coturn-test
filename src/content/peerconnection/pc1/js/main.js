@@ -11,11 +11,43 @@
 const startButton = document.getElementById('startButton');
 const callButton = document.getElementById('callButton');
 const hangupButton = document.getElementById('hangupButton');
+const startViewerButton = document.getElementById('startViewer');
+const startDeviceButton = document.getElementById('startDevice');
+const offerText = document.getElementById('offer');
+const answerText = document.getElementById('answer');
+
 callButton.disabled = true;
 hangupButton.disabled = true;
 startButton.addEventListener('click', start);
 callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
+startViewerButton.addEventListener('click', async function() {
+  var offer = await generatePc1Offer();
+  offerText.value = JSON.stringify(offer.toJSON())
+  subscribeLiveInfo();
+
+  fetch(`${pc1ApiHost}/api/device/${[pc2DeviceId]}/send-offer`,  {  
+    method: 'POST', // 或者 'GET'  
+    headers: {  
+      'Content-Type': 'application/json',  
+    },  
+    body: JSON.stringify({  
+      sdp: offer.sdp,  
+      type: 'offer',  
+    })
+  })
+
+})
+startDeviceButton.addEventListener('click', async function() {
+  var offer = offerText.value
+  console.info("offer {}", offer)
+  if(!offer) {
+    inputPc2Offer()
+    return
+  }
+  var answer = await inputPc2Offer(new RTCSessionDescription(JSON.parse(offer)))
+  answerText.value = JSON.stringify(answer.toJSON())
+})
 
 let startTime;
 const localVideo = document.getElementById('localVideo');
@@ -42,7 +74,15 @@ remoteVideo.addEventListener('resize', () => {
 
 let localStream;
 let pc1;
+let pc1Candidates = []
+let pc1BrowerId;
+let pc1ApiHost = "http://dev.supercharge.manage.k8s.local:32283"
 let pc2;
+let pc2ServerId = "test-02"
+let pc2DeviceId = "a"
+let pc2WSHost = "wss://mydomain.com:32443"
+let pc2WS;
+let pc2Candidates = []
 const offerOptions = {
   offerToReceiveAudio: 1,
   offerToReceiveVideo: 1
@@ -69,6 +109,127 @@ async function start() {
     alert(`getUserMedia() error: ${e.name}`);
   }
 }
+
+async function generatePc1Offer() {
+    if (!pc1) {
+      const configuration = {
+        iceServers: [
+          {
+              urls: 'turn:116.63.169.117:3478',
+              username: 'user-test',
+              credential: '123456'
+          }
+        ]
+      };
+      console.log('RTCPeerConnection configuration:', configuration);
+      pc1 = new RTCPeerConnection(configuration);
+      pc1.addEventListener('icecandidate', e => {
+        fetch(`${pc1ApiHost}/api/device/${[pc2DeviceId]}/send-ice-candidate`,  {  
+          method: 'POST', // 或者 'GET'  
+          headers: {  
+            'Content-Type': 'application/json',  
+          },
+          body: JSON.stringify({  
+            candidate: e.candidate
+          })
+        })
+      });
+      pc1.addEventListener('iceconnectionstatechange', e => onIceStateChange(pc1, e));
+      pc1.addEventListener('track', gotRemoteStream);
+    }
+
+    var offer = null;
+    try {
+      console.log('pc1 createOffer start');
+      offer = await pc1.createOffer(offerOptions);
+      console.log(`Offer from pc1\n${JSON.stringify(offer.toJSON())}`);
+
+      await pc1.setLocalDescription(offer);
+      
+      console.info("pc1 local sdp offer set success");
+    } catch (e) {
+      onCreateSessionDescriptionError(e);
+    }
+    return offer;
+}
+
+async function inputPc1Answer(sdpAnswer) {
+  console.log('pc1 setRemoteDescription start');
+  try {
+    await pc1.setRemoteDescription(sdpAnswer);
+    onSetRemoteSuccess(pc1);
+    answerText.value = JSON.stringify(sdpAnswer)
+  } catch (e) {
+    onSetSessionDescriptionError(e);
+  }
+}
+
+async function inputPc2Offer(sdpOffer) {
+  console.info("inputPc2Offer {}", sdpOffer)
+    if (!pc2) {
+      await pc2DeviceStatusReport()
+
+      const configuration = {
+        iceServers: [
+          {
+              urls: 'turn:116.63.169.117:3478',
+              username: 'user-test',
+              credential: '123456'
+          }
+        ]
+      };
+      console.log('RTCPeerConnection configuration:', configuration);
+      pc2 = new RTCPeerConnection(configuration);
+      pc2.addEventListener('icecandidate', e => {
+        console.info("pc2 icecandidate", e.candidate)
+      
+        var candidateStr = JSON.stringify(e.candidate).replaceAll('"', '\\"')
+        if (pc2WS) {
+          pc2WS.send(` {  "event": "REQUEST",  "messages": [{    "value": {      "@type": "type.googleapis.com/com.juji.supercharge.protoc.messages.device.DeviceRequest",      "requestId": "15b89e24-9db9-4f16-88c7-957615573c62",      "deviceId": "${pc2DeviceId}",      "request": "ICE_CANDIDATE",      "body": {        "browserId": {          "@type": "type.googleapis.com/google.protobuf.StringValue",          "value": '${pc1BrowerId}'        },        "candidate": {          "@type": "type.googleapis.com/google.protobuf.StringValue",          "value": "${candidateStr}"        }      }    },    "timestamp": "1706001604950"  }]}`)
+        }
+      });
+      pc2.addEventListener('iceconnectionstatechange', e => onIceStateChange(pc1, e));
+
+      localStream.getTracks().forEach(track => pc2.addTrack(track, localStream));
+      console.log('Added local stream to pc1');
+    }
+
+    if(!sdpOffer) {
+        return
+    }
+
+    console.log('pc2 setRemoteDescription start');
+    try {
+      await pc2.setRemoteDescription(sdpOffer);
+      onSetRemoteSuccess(pc2);
+      offerText.value = JSON.stringify(sdpOffer)
+    } catch (e) {
+      onSetSessionDescriptionError();
+    }
+
+    console.log('pc2 createAnswer start');
+    // Since the 'remote' side has no media stream we need
+    // to pass in the right constraints in order for it to
+    // accept the incoming offer of audio and video.
+    var answer = null;
+    try {
+      answer = await pc2.createAnswer();
+      console.log(`Answer from pc2:\n${JSON.stringify(answer.toJSON())}`);
+      answerText.value = JSON.stringify(answer)
+      console.log('pc2 setLocalDescription start');
+      try {
+        await pc2.setLocalDescription(answer);
+        onSetLocalSuccess(pc2);
+      } catch (e) {
+        onSetSessionDescriptionError(e);
+      }
+    } catch (e) {
+      onCreateSessionDescriptionError(e);
+    }
+    return answer;
+}
+
+
 
 async function call() {
   callButton.disabled = true;
@@ -156,7 +317,7 @@ function onSetSessionDescriptionError(error) {
 function gotRemoteStream(e) {
   if (remoteVideo.srcObject !== e.streams[0]) {
     remoteVideo.srcObject = e.streams[0];
-    console.log('pc2 received remote stream');
+    console.log('pc1 received remote stream');
   }
 }
 
@@ -211,4 +372,94 @@ function hangup() {
   pc2 = null;
   hangupButton.disabled = true;
   callButton.disabled = false;
+}
+
+let isPolling = false; // 控制轮询的开关  
+async function subscribeLiveInfo() {
+  let pollInterval = 1000; // 轮询间隔时间（10秒）  
+
+  if (isPolling) {
+    setTimeout(subscribeLiveInfo, pollInterval);
+    return
+  }
+
+  isPolling = true
+  fetch(`${pc1ApiHost}/api/device/${pc2DeviceId}/live/subscribe`)  
+    .then(response => response.json())  
+    .then(data => {  
+      // 处理收到的数据  
+      console.log(data); 
+      if(data.sdp) {
+        inputPc1Answer(new RTCSessionDescription({
+          "type": "answer",
+          "sdp": data.sdp
+        }))
+        pc1Candidates.forEach(pc1Candidate => {
+          try {
+            pc1.addIceCandidate(new RTCIceCandidate(JSON.parse(pc1Candidate)))
+          } catch (e) {
+          }
+        })
+      }
+      if(data.candidates) {
+        pc1Candidates = []
+        data.candidates.forEach(candidate => {
+          if(!candidate || candidate === "NULL" || candidate === "null") {
+              return
+          }
+          if(!pc1.remoteDescription) {
+            pc1Candidates.push(candidate)
+          } else {
+            pc1.addIceCandidate(new RTCIceCandidate(JSON.parse(candidate)))
+          }
+        })
+      }
+    })  
+    .catch((error) => {  
+      // 处理请求错误  
+      console.error('Error:', error);  
+    })  
+    .finally(() => {  
+      // 在这里控制轮询的开关，决定是否进入下一次循环  
+      // 这里假设每次轮询完成后进入下一次循环  
+      isPolling = false;  
+
+      // 等待一段时间后再次进行轮询  
+      setTimeout(subscribeLiveInfo, pollInterval);  
+    }); 
+}
+
+async function pc2DeviceStatusReport() {
+  if(!pc2WS) {
+    pc2WS = new WebSocket(`${pc2WSHost}/websocket/edge/${pc2ServerId}?token=xxxx`);
+    pc2WS.onopen = function(e) {
+      pc2WS.send(` {  "messages": [{    "value": {      "@type": "type.googleapis.com/com.juji.supercharge.protoc.messages.device.DeviceStatusReport",      "deviceId": "${pc2DeviceId}",      "online":"1"    },    "timestamp": "1706000268468"  }]}`)
+    }
+    
+    pc2WS.onmessage = function(e) {
+        var dataJSON = JSON.parse(e.data)
+        if (dataJSON.event === "CMD") {
+            var cmd = dataJSON.messages[0].value.cmd
+            if(cmd === "GENERATE_SDP_ANSWER") {
+              var browserId = dataJSON.messages[0].value.body.browserId.value
+              var offer = dataJSON.messages[0].value.body.sdp.value
+              var answerPromise = inputPc2Offer(new RTCSessionDescription({"type": "offer", "sdp": offer}))
+              answerPromise.then(answer => {
+                pc2WS.send(` {  "event": "REQUEST",  "messages": [{    "value": {      "@type": "type.googleapis.com/com.juji.supercharge.protoc.messages.device.DeviceRequest",      "requestId": "66f01d7b-483b-487d-8de2-ec5cb976e1ec",      "deviceId": "${pc2DeviceId}",      "request": "SDP_ANSWER",      "body": {        "browserId": {          "@type": "type.googleapis.com/google.protobuf.StringValue",          "value": "${browserId}"        },        "type": {          "@type": "type.googleapis.com/google.protobuf.StringValue",          "value": "answer"        },        "sdp": {          "@type": "type.googleapis.com/google.protobuf.StringValue",          "value": "${answer.sdp}"        }      }    },    "timestamp": "1706001417634"  }]}`)
+              })
+            }
+            if(cmd === "GENERATE_ICE_CANDIDATE") {
+              var browserId = dataJSON.messages[0].value.body.browserId.value
+              pc1BrowerId = browserId
+
+              var icecandidate = dataJSON.messages[0].value.body.candidate.value
+              pc2.addIceCandidate(new RTCIceCandidate(JSON.parse(icecandidate)))
+            }
+        }
+    }
+  
+  }
+
+  
+
 }
