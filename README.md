@@ -4,7 +4,14 @@ This is a repository for the WebRTC JavaScript code samples. All of the samples 
 
 To run the samples locally
 ```
-npm install && npm start
+# 进入源代码目录
+cd src/
+
+# 开启静态资源代理服务(python3)
+python3 -m http.server 65530 
+
+# 开启静态资源代理服务(python2)
+python -m SimpleHTTPServer 65530 
 ```
 and open your browser on the page indicated.
 
