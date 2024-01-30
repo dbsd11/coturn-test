@@ -13,7 +13,15 @@ python3 -m http.server 65530
 # 开启静态资源代理服务(python2)
 python -m SimpleHTTPServer 65530 
 ```
-and open your browser on the page indicated.
+and open your browser on the page indicated(http://localhost:65530/content/peerconnection/pc1/).
+
+## Test
+
+一个device端：先"open camera"，然后 "start device"
+
+一个viewer端："start viewer". 即可看到成功建立直播
+
+
 
 ## Contributing
 We welcome contributions and bugfixes. Please see [CONTRIBUTING.md](https://github.com/webrtc/samples/blob/gh-pages/CONTRIBUTING.md) for details.
