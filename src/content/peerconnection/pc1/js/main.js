@@ -82,7 +82,7 @@ let pc1ApiToken = ""
 let pc2;
 let pc2ServerId = "test-02"
 let pc2DeviceId = "a"
-let pc2WSHost = "ws://localhost:8080"
+let pc2WSHost = "ws://dev.supercharge.mobile.k8s.local:31496"
 let pc2WS;
 let pc2Candidates = []
 const offerOptions = {
