@@ -30,6 +30,7 @@ startViewerButton.addEventListener('click', async function() {
     method: 'POST', // 或者 'GET'  
     headers: {  
       'Content-Type': 'application/json',  
+      'Authorization': pc1ApiToken
     },  
     body: JSON.stringify({  
       sdp: offer.sdp,  
@@ -77,16 +78,37 @@ let pc1;
 let pc1Candidates = []
 let pc1BrowerId;
 let pc1ApiHost = "http://dev.supercharge.manage.k8s.local:32283"
+let pc1ApiToken = ""
 let pc2;
 let pc2ServerId = "test-02"
 let pc2DeviceId = "a"
-let pc2WSHost = "wss://mydomain.com:32443"
+let pc2WSHost = "ws://localhost:8080"
 let pc2WS;
 let pc2Candidates = []
 const offerOptions = {
   offerToReceiveAudio: 1,
   offerToReceiveVideo: 1
 };
+
+// 初始化pc1ApiToken
+fetch(`${pc1ApiHost}/api/manager/user/login`,  {  
+  method: 'POST', // 或者 'GET'  
+  headers: {  
+    'Content-Type': 'application/json',  
+  },
+  body : JSON.stringify({
+    "account": "dbsd11",
+    "password": "12345678"
+  })
+})  
+.then(response => response.json())  
+.then(data => {  
+  // 处理收到的数据  
+  console.log(data); 
+  if(data.data.token) {
+    pc1ApiToken = data.data.token
+  }
+})
 
 function getName(pc) {
   return (pc === pc1) ? 'pc1' : 'pc2';
@@ -128,6 +150,7 @@ async function generatePc1Offer() {
           method: 'POST', // 或者 'GET'  
           headers: {  
             'Content-Type': 'application/json',  
+            'Authorization': pc1ApiToken
           },
           body: JSON.stringify({  
             candidate: e.candidate
@@ -384,7 +407,13 @@ async function subscribeLiveInfo() {
   }
 
   isPolling = true
-  fetch(`${pc1ApiHost}/api/device/${pc2DeviceId}/live/subscribe`)  
+  fetch(`${pc1ApiHost}/api/device/${pc2DeviceId}/live/subscribe`,  {  
+      method: 'GET', // 或者 'GET'  
+      headers: {  
+        'Content-Type': 'application/json',  
+        'Authorization': pc1ApiToken
+      }
+    })  
     .then(response => response.json())  
     .then(data => {  
       // 处理收到的数据  
