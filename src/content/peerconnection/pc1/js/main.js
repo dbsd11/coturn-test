@@ -23,7 +23,7 @@ callButton.addEventListener('click', call);
 hangupButton.addEventListener('click', hangup);
 startViewerButton.addEventListener('click', async function() {
   var offer = await generatePc1Offer();
-  offerText.value = JSON.stringify(offer.toJSON())
+  offerText.value = JSON.stringify(offer)
   subscribeLiveInfo();
 
   fetch(`${pc1ApiHost}/api/device/${[pc2DeviceId]}/send-offer`,  {  
@@ -47,7 +47,7 @@ startDeviceButton.addEventListener('click', async function() {
     return
   }
   var answer = await inputPc2Offer(new RTCSessionDescription(JSON.parse(offer)))
-  answerText.value = JSON.stringify(answer.toJSON())
+  answerText.value = JSON.stringify(answer)
 })
 
 let startTime;
@@ -77,10 +77,10 @@ let localStream;
 let pc1;
 let pc1Candidates = []
 let pc1BrowerId;
-let pc1ApiHost = "http://dev.supercharge.manage.k8s.local:32283"
+let pc1ApiHost = "https://web-dev.juhaochong.com:30212"
 let pc1ApiToken = ""
 let pc2;
-let pc2ServerId = "test-02"
+let pc2ServerId = "test_web"
 let pc2DeviceId = "a"
 let pc2WSHost = "ws://dev.supercharge.mobile.k8s.local:31496"
 let pc2WS;
@@ -137,7 +137,7 @@ async function generatePc1Offer() {
       const configuration = {
         iceServers: [
           {
-              urls: 'turn:116.63.169.117:3478',
+              urls: 'turn:1.95.59.148:63478',
               username: 'user-test',
               credential: '123456'
           }
@@ -163,9 +163,9 @@ async function generatePc1Offer() {
 
     var offer = null;
     try {
-      console.log('pc1 createOffer start');
+      console.log('pc1 createOffer start', pc1);
       offer = await pc1.createOffer(offerOptions);
-      console.log(`Offer from pc1\n${JSON.stringify(offer.toJSON())}`);
+      console.log(`Offer from pc1\n${JSON.stringify(offer)}`);
 
       await pc1.setLocalDescription(offer);
       
@@ -195,7 +195,7 @@ async function inputPc2Offer(sdpOffer) {
       const configuration = {
         iceServers: [
           {
-              urls: 'turn:116.63.169.117:3478',
+              urls: 'turn:1.95.59.148:63478',
               username: 'user-test',
               credential: '123456'
           }
@@ -237,7 +237,7 @@ async function inputPc2Offer(sdpOffer) {
     var answer = null;
     try {
       answer = await pc2.createAnswer();
-      console.log(`Answer from pc2:\n${JSON.stringify(answer.toJSON())}`);
+      console.log(`Answer from pc2:\n${JSON.stringify(answer)}`);
       answerText.value = JSON.stringify(answer)
       console.log('pc2 setLocalDescription start');
       try {
