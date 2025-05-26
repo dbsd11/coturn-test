@@ -462,7 +462,7 @@ async function pc2DeviceStatusReport() {
   if(!pc2WS) {
     pc2WS = new WebSocket(`${pc2WSHost}/websocket/edge/${pc2ServerId}?token=xxxx`);
     pc2WS.onopen = function(e) {
-      pc2WS.send(` {  "messages": [{    "value": {      "@type": "type.googleapis.com/com.juji.supercharge.protoc.messages.device.DeviceStatusReport",      "deviceId": "${pc2DeviceId}",      "online":"1"    },    "timestamp": "1706000268468"  }]}`)
+      pc2WS.send(` {  "messages": [{    "value": {      "@type": "type.googleapis.com/com.juji.supercharge.protoc.messages.device.DeviceStatusReport",      "deviceId": "${pc2ServerId}",      "online":"1"    },    "timestamp": "1706000268468"  }]}`)
     }
     
     pc2WS.onmessage = function(e) {
